@@ -20,10 +20,6 @@ where
     PreEscaped(s)
 }
 
-// sorry, ignoring single and double digit issues
-// We can't depend on a starting `#` either, because some people just use `FIXME 1232`
-static ISSUE_REGEX: Lazy<regex::Regex> =
-    Lazy::new(|| regex::Regex::new(r"[^a-zA-Z][1-9][0-9]{2,}").unwrap());
 static FIXME_REGEX: Lazy<regex::Regex> =
     Lazy::new(|| regex::Regex::new(r"(FIXME|HACK)\(([^\)]+)\)").unwrap());
 
@@ -174,11 +170,16 @@ struct IssueReference {
 }
 
 fn issue_references(text: &str) -> Vec<IssueReference> {
-    ISSUE_REGEX
-        .find_iter(text)
+    // sorry, ignoring single and double digit issues
+    // We can't depend on a starting `#` either, because some people just use `FIXME 1232`
+    let issue_regex: Lazy<regex::Regex> =
+        Lazy::new(|| regex::Regex::new(r"[^a-zA-Z]([1-9][0-9]{2,})").unwrap());
+
+    issue_regex
+        .captures_iter(text)
         .map(|m| IssueReference {
-            start: m.start(),
-            end: m.end(),
+            start: m.get(1).unwrap().start(),
+            end: m.get(1).unwrap().end(),
         })
         .collect()
 }
