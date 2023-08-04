@@ -189,6 +189,10 @@ mod tests {
     fn test_issue_references() {
         let cases = [
             (
+                "FIXME(jackh726): This is a hack. It's somewhat like",
+                vec![]
+            ),
+            (
                 "FIXME: #7698, false positive of the internal lints",
                 //       ^   ^
                 //       |   |
@@ -201,10 +205,6 @@ mod tests {
                 vec![IssueReference {start:7, end: 12}]
             ),
             (
-                "#[allow(dead_code)] // FIXME(81658): should be used + lint reinstated after #83171 relands",
-                vec![IssueReference {start:29, end: 34}, IssueReference {start:77, end: 82}]
-            ),
-            (
                 "ignore-android: FIXME (#20004)",
                 vec![IssueReference {start:24, end: 29}]
             ),
@@ -213,12 +213,12 @@ mod tests {
                 vec![IssueReference {start:23, end: 28}]
             ),
             (
-                "FIXME(jackh726): This is a hack. It's somewhat like",
-                vec![]
-            ),
-            (
                 "frame_pointer: FramePointer::Always, // FIXME 43575: should be MayOmit",
                 vec![IssueReference {start:46, end: 51}]
+            ),
+            (
+                "#[allow(dead_code)] // FIXME(81658): should be used + lint reinstated after #83171 relands",
+                vec![IssueReference {start:29, end: 34}, IssueReference {start:77, end: 82}]
             ),
         ];
 
