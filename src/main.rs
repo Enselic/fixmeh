@@ -90,12 +90,13 @@ fn main() -> std::io::Result<()> {
                         };
                         let issue_links = |clean_text: &mut Vec<_>, text| {
                             let mut last = 0;
-                            for found in ISSUE_REGEX.find_iter(text) {
-                                if found.start() != last {
-                                    bold_names(clean_text, &text[last..found.start()]);
+                            for found in issue_references(text) {
+                                if found.start != last {
+                                    bold_names(clean_text, &text[last..found.start]);
                                 }
-                                last = found.end();
-                                clean_text.push(html!(span { a href=(format!("https://github.com/rust-lang/rust/issues/{}", found.as_str())) { (found.as_str()) } }));
+                                last = found.end;
+                                let found_str = &text[found.end..found.start];
+                                clean_text.push(html!(span { a href=(format!("https://github.com/rust-lang/rust/issues/{}", found_str)) { (found_str) } }));
                             }
                             if last != text.len() {
                                 bold_names(clean_text, &text[last..]);
@@ -166,22 +167,49 @@ fn main() -> std::io::Result<()> {
     outfile.write_all(doc_str.as_bytes())
 }
 
+#[derive(Debug, PartialEq, Eq)]
+struct IssueReference {
+    start: usize,
+    end: usize,
+}
+
+fn issue_references(text: &str) -> Vec<IssueReference> {
+    ISSUE_REGEX
+        .find_iter(text)
+        .map(|m| IssueReference {
+            start: m.start(),
+            end: m.end(),
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_issue_regex() {
+    fn test_issue_references() {
         let cases = [
-            ("FIXME: #7698, false positive of the internal lints", vec!["7698"]),
-            ("FIXME: 91167", vec!["91167"]),
+            (
+                "FIXME: #7698, false positive of the internal lints",
+                //       ^   ^
+                //       |   |
+                // index 8   |
+                //     index 12
+                vec![IssueReference {start: 8, end: 11}],
+            ),
+            ("FIXME: 91167", vec![IssueReference {start:7, end: 12}]),
+            ("#[allow(dead_code)] // FIXME(81658): should be used + lint reinstated after #83171 relands", vec![IssueReference {start:29, end: 34}, IssueReference {start:77, end: 82}]),
         ];
 
-        let failed: Vec<_> = cases.into_iter().filter(|(text, expected)| {
-            let matches: Vec<_> = ISSUE_REGEX.find_iter(*text).map(|m|m.as_str()).collect();
-            let test_pass = matches == *expected;
-            !test_pass
-        }).collect();
+        let failed: Vec<_> = cases
+            .into_iter()
+            .filter(|(text, expected)| {
+                let refs = issue_references(text);
+                let test_pass = refs == *expected;
+                !test_pass
+            })
+            .collect();
 
         assert!(failed.is_empty(), "failed cases: {:?}", failed);
     }
