@@ -6,6 +6,7 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use maud::{html, Markup, PreEscaped, Render};
+use once_cell::sync::Lazy;
 
 fn into_markup<T>(x: T) -> Markup
 where
@@ -19,11 +20,18 @@ where
     PreEscaped(s)
 }
 
+// sorry, ignoring single and double digit issues
+// We can't depend on a starting `#` either, because some people just use `FIXME 1232`
+static ISSUE_REGEX: Lazy<regex::Regex> =
+    Lazy::new(|| regex::Regex::new(r"[^a-zA-Z][1-9][0-9]{2,}").unwrap());
+static FIXME_REGEX: Lazy<regex::Regex> =
+    Lazy::new(|| regex::Regex::new(r"(FIXME|HACK)\(([^\)]+)\)").unwrap());
+
 fn main() -> std::io::Result<()> {
     const TRIM_TOKENS: &[char] = &['/', '*', ' ', ':', '-', '.', '^', ','];
     let mut dedup: HashMap<_, Vec<_>> = HashMap::new();
 
-    for file in glob::glob("rust/**/*.rs").expect("glob pattern failed") {
+    for file in glob::glob("../rust2/**/*.rs").expect("glob pattern failed") {
         let filename = file.unwrap();
         let mut text = String::new();
         if let Err(e) = std::fs::File::open(&filename)
@@ -40,6 +48,7 @@ fn main() -> std::io::Result<()> {
             }
 
             let line = line.trim_matches(TRIM_TOKENS).to_owned();
+            println!("{line}");
             let filename: PathBuf = filename.iter().skip(1).collect();
             dedup
                 .entry(line)
@@ -49,10 +58,6 @@ fn main() -> std::io::Result<()> {
     }
     let mut lines: Vec<_> = dedup.into_iter().collect();
     lines.sort_by(|(a, _), (b, _)| a.cmp(b));
-    // sorry, ignoring single and double digit issues
-    // We can't depend on a starting `#` either, because some people just use `FIXME 1232`
-    let issue_regex = regex::Regex::new(r"[1-9][0-9]{2,}").unwrap();
-    let fixme_regex = regex::Regex::new(r"(FIXME|HACK)\(([^\)]+)\)").unwrap();
 
     let doc: maud::Markup = html!(
         html {
@@ -74,7 +79,7 @@ fn main() -> std::io::Result<()> {
                         let mut last = 0;
                         let mut clean_text = Vec::new();
                         let bold_names = |clean_text: &mut Vec<_>, text: &str| {
-                            if let Some(capture) = fixme_regex.captures(text) {
+                            if let Some(capture) = FIXME_REGEX.captures(text) {
                                 let found = capture.get(2).unwrap();
                                 clean_text.push(html!(span {(&text[..found.start()])}));
                                 clean_text.push(html!(span { strong { (found.as_str()) } }));
@@ -85,7 +90,7 @@ fn main() -> std::io::Result<()> {
                         };
                         let issue_links = |clean_text: &mut Vec<_>, text| {
                             let mut last = 0;
-                            for found in issue_regex.find_iter(text) {
+                            for found in ISSUE_REGEX.find_iter(text) {
                                 if found.start() != last {
                                     bold_names(clean_text, &text[last..found.start()]);
                                 }
@@ -159,4 +164,25 @@ fn main() -> std::io::Result<()> {
     let _ = std::fs::remove_file("build/index.html");
     let mut outfile = std::fs::File::create("build/index.html")?;
     outfile.write_all(doc_str.as_bytes())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_issue_regex() {
+        let cases = [
+            ("FIXME: #7698, false positive of the internal lints", vec!["7698"]),
+            ("FIXME: 91167", vec!["91167"]),
+        ];
+
+        let failed: Vec<_> = cases.into_iter().filter(|(text, expected)| {
+            let matches: Vec<_> = ISSUE_REGEX.find_iter(*text).map(|m|m.as_str()).collect();
+            let test_pass = matches == *expected;
+            !test_pass
+        }).collect();
+
+        assert!(failed.is_empty(), "failed cases: {:?}", failed);
+    }
 }
