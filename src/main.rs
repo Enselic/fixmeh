@@ -204,6 +204,16 @@ mod tests {
                 "#[allow(dead_code)] // FIXME(81658): should be used + lint reinstated after #83171 relands",
                 vec![IssueReference {start:29, end: 34}, IssueReference {start:77, end: 82}]
             ),
+            (
+                "ignore-android: FIXME (#20004)",
+                vec![IssueReference {start:24, end: 39}]
+            ),
+            (
+                "ignore-android: FIXME(#10381)",
+                vec![IssueReference {start:23, end: 38}]
+            ),
+
+            "FIXME(jackh726): This is a hack. It's somewhat like"
         ];
 
         for case in cases {
