@@ -89,7 +89,7 @@ fn main() -> std::io::Result<()> {
                                     bold_names(clean_text, &text[last..found.start]);
                                 }
                                 last = found.end;
-                                let found_str = &text[found.end..found.start];
+                                let found_str = &text[found.start..found.end];
                                 clean_text.push(html!(span { a href=(format!("https://github.com/rust-lang/rust/issues/{}", found_str)) { (found_str) } }));
                             }
                             if last != text.len() {
@@ -215,6 +215,10 @@ mod tests {
             (
                 "FIXME(jackh726): This is a hack. It's somewhat like",
                 vec![]
+            ),
+            (
+                "frame_pointer: FramePointer::Always, // FIXME 43575: should be MayOmit",
+                vec![IssueReference {start:46, end: 51}]
             ),
         ];
 
