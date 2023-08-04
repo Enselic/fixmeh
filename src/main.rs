@@ -6,7 +6,6 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use maud::{html, Markup, PreEscaped, Render};
-use once_cell::sync::Lazy;
 
 fn into_markup<T>(x: T) -> Markup
 where
@@ -19,9 +18,6 @@ where
     }
     PreEscaped(s)
 }
-
-static FIXME_REGEX: Lazy<regex::Regex> =
-    Lazy::new(|| regex::Regex::new(r"(FIXME|HACK)\(([^\)]+)\)").unwrap());
 
 fn main() -> std::io::Result<()> {
     const TRIM_TOKENS: &[char] = &['/', '*', ' ', ':', '-', '.', '^', ','];
@@ -55,6 +51,8 @@ fn main() -> std::io::Result<()> {
     let mut lines: Vec<_> = dedup.into_iter().collect();
     lines.sort_by(|(a, _), (b, _)| a.cmp(b));
 
+    let fixme_regex = regex::Regex::new(r"(FIXME|HACK)\(([^\)]+)\)").unwrap();
+
     let doc: maud::Markup = html!(
         html {
             head {
@@ -75,7 +73,7 @@ fn main() -> std::io::Result<()> {
                         let mut last = 0;
                         let mut clean_text = Vec::new();
                         let bold_names = |clean_text: &mut Vec<_>, text: &str| {
-                            if let Some(capture) = FIXME_REGEX.captures(text) {
+                            if let Some(capture) = fixme_regex.captures(text) {
                                 let found = capture.get(2).unwrap();
                                 clean_text.push(html!(span {(&text[..found.start()])}));
                                 clean_text.push(html!(span { strong { (found.as_str()) } }));
@@ -172,8 +170,7 @@ struct IssueReference {
 fn issue_references(text: &str) -> Vec<IssueReference> {
     // sorry, ignoring single and double digit issues
     // We can't depend on a starting `#` either, because some people just use `FIXME 1232`
-    let issue_regex: Lazy<regex::Regex> =
-        Lazy::new(|| regex::Regex::new(r"[^a-zA-Z]([1-9][0-9]{2,})").unwrap());
+    let issue_regex = regex::Regex::new(r"[^a-zA-Z]([1-9][0-9]{2,})").unwrap();
 
     issue_regex
         .captures_iter(text)
