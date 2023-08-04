@@ -206,14 +206,16 @@ mod tests {
             ),
             (
                 "ignore-android: FIXME (#20004)",
-                vec![IssueReference {start:24, end: 39}]
+                vec![IssueReference {start:24, end: 29}]
             ),
             (
                 "ignore-android: FIXME(#10381)",
-                vec![IssueReference {start:23, end: 38}]
+                vec![IssueReference {start:23, end: 28}]
             ),
-
-            "FIXME(jackh726): This is a hack. It's somewhat like"
+            (
+                "FIXME(jackh726): This is a hack. It's somewhat like",
+                vec![]
+            ),
         ];
 
         for case in cases {
