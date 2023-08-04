@@ -196,19 +196,21 @@ mod tests {
                 //     index 12
                 vec![IssueReference {start: 8, end: 12}],
             ),
-            ("FIXME: 91167", vec![IssueReference {start:7, end: 12}]),
-            ("#[allow(dead_code)] // FIXME(81658): should be used + lint reinstated after #83171 relands", vec![IssueReference {start:29, end: 34}, IssueReference {start:77, end: 82}]),
+            (
+                "FIXME: 91167",
+                vec![IssueReference {start:7, end: 12}]
+            ),
+            (
+                "#[allow(dead_code)] // FIXME(81658): should be used + lint reinstated after #83171 relands",
+                vec![IssueReference {start:29, end: 34}, IssueReference {start:77, end: 82}]
+            ),
         ];
 
-        let failed: Vec<_> = cases
-            .into_iter()
-            .filter(|(text, expected)| {
-                let refs = issue_references(text);
-                assert_eq!(refs, *expected, "{text}");
-                false
-            })
-            .collect();
+        for case in cases {
+            let text = case.0;
+            let expected = case.1;
 
-        assert!(failed.is_empty(), "failed cases: {:?}", failed);
+            assert_eq!(issue_references(text), *expected, "{text}");
+        }
     }
 }
