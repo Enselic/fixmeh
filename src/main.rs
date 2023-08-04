@@ -196,7 +196,7 @@ mod tests {
                 //       |   |
                 // index 8   |
                 //     index 12
-                vec![IssueReference {start: 8, end: 11}],
+                vec![IssueReference {start: 8, end: 12}],
             ),
             ("FIXME: 91167", vec![IssueReference {start:7, end: 12}]),
             ("#[allow(dead_code)] // FIXME(81658): should be used + lint reinstated after #83171 relands", vec![IssueReference {start:29, end: 34}, IssueReference {start:77, end: 82}]),
@@ -206,8 +206,8 @@ mod tests {
             .into_iter()
             .filter(|(text, expected)| {
                 let refs = issue_references(text);
-                let test_pass = refs == *expected;
-                !test_pass
+                assert_eq!(refs, *expected, "{text}");
+                false
             })
             .collect();
 
