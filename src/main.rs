@@ -11,7 +11,7 @@ use maud::{html, Markup, PreEscaped, Render};
 #[derive(clap::Parser, Debug, Clone)]
 pub struct Args {
     /// Path to the root dir of the source tree. E.g. "~/src/rust".
-    #[arg(long, value_name = "PATH", default_value = "./rust")]
+    #[arg(long, value_name = "PATH", default_value = "rust")]
     src_root: PathBuf,
 
     /// GitHub owner of repo. Used to create issue and code links.
@@ -276,7 +276,7 @@ impl Args {
     }
 
     fn path_in_repo<'a>(&self, path: &'a Path) -> &'a Path{
-        path.strip_prefix(&self.src_root).unwrap()
+        path.strip_prefix(&self.src_root).expect(format!("{} is not a prefix of {}", self.src_root.display(), path.display()).as_str())
     }
 }
 
