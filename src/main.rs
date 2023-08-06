@@ -7,16 +7,19 @@ use std::path::PathBuf;
 
 use maud::{html, Markup, PreEscaped, Render};
 
-#[derive(clap::Parser, Debug)]
+#[derive(clap::Parser, Debug, Clone)]
 pub struct Args {
     /// Path to the root dir of the source tree. E.g. "~/src/rust".
     #[arg(long, value_name = "PATH", default_value = "./rust")]
     src_root: PathBuf,
 
-    /// Base URL of issues. Include the trailing slash.
-    #[arg(long, value_name = "URL", default_value = "https://github.com/rust-lang/rust/issues/")]
-    issues_base_url: String,
+    /// GitHub owner of repo. Used to create issue and code links.
+    #[arg(long, value_name = "NAME", default_value = "rust-lang")]
+    github_owner: String,
 
+    /// GitHub repo. Used to create issue and code links.
+    #[arg(long, value_name = "NAME", default_value = "rust")]
+    github_repo: String,
 }
 
 fn into_markup<T>(x: T) -> Markup
@@ -55,7 +58,6 @@ fn main() -> std::io::Result<()> {
             }
 
             let line = line.trim_matches(TRIM_TOKENS).to_owned();
-            let filename: PathBuf = filename.iter().skip(1).collect();
             dedup
                 .entry(line)
                 .or_default()
@@ -66,7 +68,7 @@ fn main() -> std::io::Result<()> {
     lines.sort_by(|(a, _), (b, _)| a.cmp(b));
     let fixme_regex = regex::Regex::new(r"(FIXME|HACK)\(([^\)]+)\)").unwrap();
 
-    let mut querier = IssueQuerier::new();
+    let mut querier = IssueQuerier::new(args.clone());
 
     let doc: maud::Markup = html!(
         html {
@@ -116,7 +118,7 @@ fn main() -> std::io::Result<()> {
                                     *issue_states += &querier.issue_state(issue_nbr);
                                     *issue_states += " "; // Trailing spaces in HTML are ignored, so this is fine.
                                 }
-                                clean_text.push(html!(span { a href=(format!("{}{}", args.issues_base_url, found_str)) { (found_str) } }));
+                                clean_text.push(html!(span { a href=(format!("{}/issues/{}", args.base_url(), found_str)) { (found_str) } }));
                             }
                             if last != text.len() {
                                 bold_names(clean_text, &text[last..]);
@@ -142,9 +144,9 @@ fn main() -> std::io::Result<()> {
                                 }
                                 td {
                                     (into_markup(entries.iter().map(|(file, line)| html!(
-                                        a href=(format!("https://github.com/rust-lang/rust/blob/master/{}#L{}", file.display(), line)) {
+                                        a href=(format!("{}/blob/master/{}#L{}", args.base_url(), args.path_in_repo(file), line)) {
                                             ({
-                                                let mut file: PathBuf = file.iter().skip(1).collect();
+                                                let mut file: PathBuf = file.unwrap().strip_prefix(&args.src_root).unwrap().to_owned();
                                                 file.set_extension("");
                                                 let file = file.display().to_string();
                                                 let file = file.trim_start_matches("lib");
@@ -214,13 +216,14 @@ fn issue_references(text: &str) -> Vec<IssueReference> {
 }
 
 struct IssueQuerier {
+    args: Args,
     runtime: tokio::runtime::Runtime,
     octocrab: octocrab::Octocrab,
     cache: HashMap<u64, String>,
 }
 
 impl IssueQuerier {
-    fn new() -> Self {
+    fn new(args: Args) -> Self {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
@@ -236,6 +239,7 @@ impl IssueQuerier {
         });
 
         IssueQuerier {
+            args,
             runtime,
             octocrab,
             cache: HashMap::new(),
@@ -250,7 +254,7 @@ impl IssueQuerier {
                 self.runtime.block_on(async {
                     eprintln!("HTTP GET issue state for {issue_nbr}");
                     self.octocrab
-                        .issues("rust-lang", "rust")
+                        .issues(&self.args.github_owner, &self.args.github_repo)
                         .get(issue_nbr)
                         .await
                         .map(|i| format!("{:?}", i.state))
@@ -262,6 +266,12 @@ impl IssueQuerier {
                 })
             })
             .to_owned()
+    }
+}
+
+impl Args {
+    fn base_url(&self) -> String {
+        format!("https://github.com/{}/{}", self.github_owner, self.github_repo)
     }
 }
 
