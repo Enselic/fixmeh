@@ -145,9 +145,9 @@ fn main() -> std::io::Result<()> {
                                 }
                                 td {
                                     (into_markup(entries.iter().map(|(file, line)| html!(
-                                        a href=(format!("{}/blob/master/{}#L{}", args.base_url(), args.path_in_repo(file), line)) {
+                                        a href=(format!("{}/blob/master/{}#L{}", args.base_url(), args.path_in_repo(file).to_str().unwrap(), line)) {
                                             ({
-                                                let mut file: PathBuf = file.unwrap().strip_prefix(&args.src_root).unwrap().to_owned();
+                                                let mut file: PathBuf = args.path_in_repo(file).to_owned();
                                                 file.set_extension("");
                                                 let file = file.display().to_string();
                                                 let file = file.trim_start_matches("lib");
@@ -275,7 +275,7 @@ impl Args {
         format!("https://github.com/{}/{}", self.github_owner, self.github_repo)
     }
 
-    fn path_in_repo(&self, path: &Path) -> &Path{
+    fn path_in_repo<'a>(&self, path: &'a Path) -> &'a Path{
         path.strip_prefix(&self.src_root).unwrap()
     }
 }
