@@ -7,6 +7,18 @@ use std::path::PathBuf;
 
 use maud::{html, Markup, PreEscaped, Render};
 
+#[derive(clap::Parser, Debug)]
+pub struct Args {
+    /// Path to the root dir of the source tree. E.g. "~/src/rust".
+    #[arg(long, value_name = "PATH", default_value = "./rust")]
+    src_root: PathBuf,
+
+    /// Base URL of issues. Include the trailing slash.
+    #[arg(long, value_name = "URL", default_value = "https://github.com/rust-lang/rust/issues/")]
+    issues_base_url: String,
+
+}
+
 fn into_markup<T>(x: T) -> Markup
 where
     T: IntoIterator,
@@ -20,10 +32,13 @@ where
 }
 
 fn main() -> std::io::Result<()> {
+    let args = <Args as clap::Parser>::parse();
+
     const TRIM_TOKENS: &[char] = &['/', '*', ' ', ':', '-', '.', '^', ','];
     let mut dedup: HashMap<_, Vec<_>> = HashMap::new();
 
-    for file in glob::glob("rust/**/*.rs").expect("glob pattern failed") {
+    let glob_str = format!("{}/**/*.rs", args.src_root.to_str().unwrap());
+    for file in glob::glob(&glob_str).expect("glob pattern failed") {
         let filename = file.unwrap();
         let mut text = String::new();
         if let Err(e) = std::fs::File::open(&filename)
@@ -101,7 +116,7 @@ fn main() -> std::io::Result<()> {
                                     *issue_states += &querier.issue_state(issue_nbr);
                                     *issue_states += " "; // Trailing spaces in HTML are ignored, so this is fine.
                                 }
-                                clean_text.push(html!(span { a href=(format!("https://github.com/rust-lang/rust/issues/{}", found_str)) { (found_str) } }));
+                                clean_text.push(html!(span { a href=(format!("{}{}", args.issues_base_url, found_str)) { (found_str) } }));
                             }
                             if last != text.len() {
                                 bold_names(clean_text, &text[last..]);
