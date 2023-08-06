@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use std::io::Read;
 use std::io::Write;
+use std::path::Path;
 use std::path::PathBuf;
 
 use maud::{html, Markup, PreEscaped, Render};
@@ -272,6 +273,10 @@ impl IssueQuerier {
 impl Args {
     fn base_url(&self) -> String {
         format!("https://github.com/{}/{}", self.github_owner, self.github_repo)
+    }
+
+    fn path_in_repo(&self, path: &Path) -> &Path{
+        path.strip_prefix(&self.src_root).unwrap()
     }
 }
 
